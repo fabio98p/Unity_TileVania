@@ -5,29 +5,50 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+
 public class PlayerMovment : MonoBehaviour
 {
     [SerializeField] float movmentVelocity = 250f;
+    [SerializeField] float jumpSpeed = 5f;
+    [SerializeField] float climbSpeed = 5f;
+
 
     Vector2 moveInput;
     Rigidbody2D rb2d;
     Animator animator;
+    CapsuleCollider2D playerCapsuleCollider;
+    LayerMask groundLayer;
+    LayerMask climbingLayer;
+    float gravityScaleAtStart;
     void Start()
     {
         rb2d = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+        playerCapsuleCollider = GetComponent<CapsuleCollider2D>();
+        gravityScaleAtStart = rb2d.gravityScale;
+        groundLayer = LayerMask.GetMask("Ground");
+        climbingLayer = LayerMask.GetMask("Climbing");
     }
 
     void Update()
     {
         Run();
         FlipSprite();
+        ClimbLadder();
     }
 
     void OnMove(InputValue value)
     {
         moveInput = value.Get<Vector2>();
         Debug.Log(moveInput);
+    }
+    void OnJump(InputValue value)
+    {
+        if (!playerCapsuleCollider.IsTouchingLayers(groundLayer)) { return; }
+        if (value.isPressed)
+        {
+            rb2d.velocity += new Vector2(0f, jumpSpeed);
+        }
     }
     void Run()
     {
@@ -44,6 +65,22 @@ public class PlayerMovment : MonoBehaviour
         {
             transform.localScale = new Vector2(Mathf.Sign(rb2d.velocity.x), 1f);
         }
+    }
+    void ClimbLadder()
+    {
+        if (!playerCapsuleCollider.IsTouchingLayers(climbingLayer)) 
+        {
+            rb2d.gravityScale = gravityScaleAtStart;
+            animator.SetBool("isClimbing", false) ;
+            return;
+        }
+
+        Vector2 climbVelocity = new Vector2(rb2d.velocity.x, moveInput.y * climbSpeed);
+        rb2d.velocity = climbVelocity;
+        rb2d.gravityScale = 0f;
+
+        bool playerIsClimbing = Mathf.Abs(rb2d.velocity.y) > Mathf.Epsilon;
+        animator.SetBool("isClimbing", playerIsClimbing);
     }
 
 }
